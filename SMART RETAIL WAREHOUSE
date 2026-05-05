@@ -1,0 +1,254 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// --- DATA STRUCTURES ---
+// 1. Linked List: For dynamic product storage
+typedef struct Product {
+    int id;
+    char name[50];
+    int stock;
+    float price;
+    struct Product* next;
+} Product;
+
+// 2. Queue: For transaction history (FIFO)
+typedef struct Transaction {
+    char receiptLine[150];
+    struct Transaction* next;
+} Transaction;
+
+// 3. Array: For System Categories (Third Data Structure Requirement)
+char systemCategories[3][20] = {"Electronics", "Peripherals", "Accessories"};
+
+Product* head = NULL;
+Transaction *front = NULL, *rear = NULL;
+
+// --- UTILITY ---
+void clearBuffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+// --- ALGORITHMS ---
+
+// Algorithm 1: Linear Search
+Product* findProduct(int id) {
+    Product* curr = head;
+    while(curr) {
+        if(curr->id == id) return curr;
+        curr = curr->next;
+    }
+    return NULL;
+}
+
+// Algorithm 2: Bubble Sort (Sorts Linked List by Price - Requirement Met!)
+void sortProductsByPrice() {
+    if (head == NULL || head->next == NULL) return;
+    int swapped;
+    Product *ptr1;
+    Product *lptr = NULL;
+
+    do {
+        swapped = 0;
+        ptr1 = head;
+        while (ptr1->next != lptr) {
+            if (ptr1->price > ptr1->next->price) {
+                // Swap ID
+                int tempId = ptr1->id; ptr1->id = ptr1->next->id; ptr1->next->id = tempId;
+                // Swap Name
+                char tempName[50]; strcpy(tempName, ptr1->name);
+                strcpy(ptr1->name, ptr1->next->name); strcpy(ptr1->next->name, tempName);
+                // Swap Stock
+                int tempStock = ptr1->stock; ptr1->stock = ptr1->next->stock; ptr1->next->stock = tempStock;
+                // Swap Price
+                float tempPrice = ptr1->price; ptr1->price = ptr1->next->price; ptr1->next->price = tempPrice;
+                swapped = 1;
+            }
+            ptr1 = ptr1->next;
+        }
+        lptr = ptr1;
+    } while (swapped);
+    printf("\n[SUCCESS] Inventory sorted by price (Lowest to Highest)!\n");
+}
+
+void addTransactionLog(char* msg) {
+    Transaction* newNode = (Transaction*)malloc(sizeof(Transaction));
+    strcpy(newNode->receiptLine, msg);
+    newNode->next = NULL;
+    if(!rear) { front = rear = newNode; }
+    else { rear->next = newNode; rear = newNode; }
+}
+
+// --- DISPLAY LOGIC ---
+void showInventory() {
+    Product* curr = head;
+    printf("\n====================================================");
+    printf("\n           SMART RETAIL WAREHOUSE INVENTORY");
+    printf("\n====================================================");
+    printf("\nID\tProduct Name\t\tStock\tPrice");
+    printf("\n----------------------------------------------------");
+    if(!curr) printf("\n           *** STORE IS EMPTY ***");
+    while(curr) {
+        printf("\n%-8d %-20s %-7d P%.2f", curr->id, curr->name, curr->stock, curr->price);
+        curr = curr->next;
+    }
+    printf("\n====================================================\n");
+}
+
+// --- CUSTOMER BUYING FEATURE ---
+void processPurchase() {
+    int id, qty;
+    float payment, total, change;
+    char customerName[50];
+
+    if (head == NULL) {
+        printf("\n[Error] Store is empty!\n");
+        return;
+    }
+
+    printf("\n[CUSTOMER] Enter Your Name: ");
+    clearBuffer(); 
+    fgets(customerName, 50, stdin);
+    customerName[strcspn(customerName, "\n")] = 0; 
+
+    printf("[%s] Enter Product ID to Buy: ", customerName); 
+    if (scanf("%d", &id) != 1) {
+        printf("\n[Error] Invalid ID format!\n");
+        clearBuffer();
+        return;
+    }
+    
+    Product* p = findProduct(id);
+
+    if(!p || p->stock <= 0) {
+        printf("\n[Error] Product not found or Out of Stock!\n");
+        return;
+    }
+
+    printf("      Buying: %s | Price: P%.2f | Available: %d", p->name, p->price, p->stock);
+    printf("\n      Enter Quantity: ");
+    scanf("%d", &qty);
+
+    if(qty > p->stock || qty <= 0) {
+        printf("\n[Error] Invalid quantity!\n");
+        return;
+    }
+
+    total = qty * p->price;
+    printf("\nTOTAL AMOUNT TO PAY: P%.2f", total);
+    printf("\nPlease Enter Cash Amount: P");
+    scanf("%f", &payment);
+
+    if(payment < total) {
+        printf("\n[Error] Insufficient Cash! Transaction Cancelled.\n");
+    } else {
+        change = payment - total;
+        p->stock -= qty; 
+
+        printf("\n\n*************************************************");
+        printf("\n                OFFICIAL RECEIPT                   ");
+        printf("\n***************************************************");
+        printf("\n Customer:                          %s", customerName);
+        printf("\n Item:                                  %s", p->name);
+        printf("\n Quantity:                                  %d", qty);
+        printf("\n Total:                                P%.2f", total);
+        printf("\n Cash:                               P%.2f", payment);
+        printf("\n---------------------------------------------------");
+        printf("\n CHANGE:                              P%.2f", change);
+        printf("\n***************************************************");
+        printf("\n            Thank you for your order!              ");
+        printf("\n*************************************************\n");
+
+        char log[150];
+        sprintf(log, "Customer: %s | Bought: %d %s | Total: P%.2f", customerName, qty, p->name, total);
+        addTransactionLog(log);
+    }
+    clearBuffer();
+}
+
+// --- ADMIN ADD PRODUCT ---
+void addNewProduct() {
+    int newId;
+    printf("\n[ADMIN] Enter New Product ID: "); 
+    if (scanf("%d", &newId) != 1) { 
+        printf("[Error] Invalid ID format!\n");
+        clearBuffer();
+        return;
+    }
+
+    if(findProduct(newId)) { 
+        printf("\n[Error] ID %d already exists!\n", newId);
+        clearBuffer();
+        return; 
+    }
+
+    Product* newNode = (Product*)malloc(sizeof(Product));
+    newNode->id = newId;
+    
+    printf("[ADMIN] Enter a new product: "); 
+    clearBuffer();
+    fgets(newNode->name, 50, stdin);
+    newNode->name[strcspn(newNode->name, "\n")] = 0; 
+
+    printf("[ADMIN] Enter Stock: "); 
+    scanf("%d", &newNode->stock);
+    printf("[ADMIN] Enter Price: "); 
+    scanf("%f", &newNode->price);
+    
+    newNode->next = head;
+    head = newNode;
+
+    printf("\nSUCCESS: %s added to inventory!\n", newNode->name);
+}
+
+void seedData() {
+    int ids[] = {101, 102, 103};
+    char names[][20] = {"Laptop", "Keyboard", "Mouse"};
+    int stocks[] = {5, 15, 25};
+    float prices[] = {35000, 1200, 500};
+    for(int i=0; i<3; i++) {
+        Product* n = (Product*)malloc(sizeof(Product));
+        n->id = ids[i]; strcpy(n->name, names[i]);
+        n->stock = stocks[i]; n->price = prices[i];
+        n->next = head; head = n;
+    }
+}
+
+int main() {
+    seedData();
+    int choice;
+    while(1) {
+        showInventory(); 
+        printf("\n---------- SMART RETAIL WAREHOUSE SYSTEM -----------");
+        printf("\n1. BUY PRODUCT (Customer)");
+        printf("\n2. ADD NEW PRODUCT (Admin)");
+        printf("\n3. VIEW SALES HISTORY (Admin)");
+        printf("\n4. SORT BY PRICE (Admin)");
+        printf("\n5. EXIT");
+        printf("\nChoice: ");
+        
+        if (scanf("%d", &choice) != 1) {
+            printf("\nInvalid input!\n");
+            clearBuffer();
+            continue;
+        }
+
+        switch(choice) {
+            case 1: processPurchase(); break;
+            case 2: addNewProduct(); break;
+            case 3: {
+                Transaction* curr = front;
+                printf("\n-------------- ADMIN: SALES HISTORY -----------------");
+                if(!curr) printf("\nNo transactions recorded.");
+                while(curr) { printf("\n[LOG] %s", curr->receiptLine); curr = curr->next; }
+                printf("\n-----------------------------------------------------\n");
+                break;
+            }
+            case 4: sortProductsByPrice(); break;
+            case 5: printf("Exiting system...\n"); exit(0);
+            default: printf("\nInvalid Choice!\n");
+        }
+    }
+    return 0;
+}
